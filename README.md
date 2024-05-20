@@ -71,7 +71,7 @@ This project aims to develop a Convolutional Neural Network (CNN) model to detec
 
 ### Results and Learnings
 
-- Achieved an accuracy of X% on the validation set
+- Achieved an accuracy of 97% on the validation set
 - Identified the most challenging classes for the model
 - Discussed potential improvements and future work
 
