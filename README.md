@@ -26,7 +26,7 @@ This project aims to develop a Convolutional Neural Network (CNN) model to detec
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/traffic_sign_detection.git
+    git clone https://github.com/henryfan000418/adsp_ml.git
     ```
 2. Install the required packages:
     ```sh
