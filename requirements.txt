@@ -7,7 +7,29 @@ scikit-learn==1.1.3
 tensorflow==2.12.0  # Assuming TensorFlow 2.12.0 for compatibility
 keras==2.6.0
 
- for i, ax in enumerate(axes):
+Sure, no problem! Here's an example of how you can use `matplotlib` to visualize the keyword clusters without using `networkx`:
+
+```python
+import matplotlib.pyplot as plt
+from collections import Counter
+
+# Assuming you have the 'results' list from the previous script
+for result in results:
+    question = result['question']
+    phrases = result['phrases']
+    cluster_labels = result['cluster_labels']
+
+    # Count the frequency of each phrase in each cluster
+    cluster_counts = []
+    for i in set(cluster_labels):
+        cluster_phrases = [phrase for j, phrase in enumerate(phrases) if cluster_labels[j] == i]
+        cluster_counts.append(dict(Counter(cluster_phrases)))
+
+    # Create a figure with subplots for each cluster
+    fig, axes = plt.subplots(1, len(set(cluster_labels)), figsize=(16, 6))
+
+    # Plot the top 50 phrases for each cluster
+    for i, ax in enumerate(axes):
         ax.bar(list(cluster_counts[i].keys())[:50], list(cluster_counts[i].values())[:50])
         ax.set_title(f'Cluster {i}')
         ax.set_xlabel('Phrase')
@@ -17,3 +39,16 @@ keras==2.6.0
     fig.suptitle(f'Keyword Clusters for Question: {question}', fontsize=16)
     plt.tight_layout()
     plt.show()
+```
+
+This script will create a figure with one subplot for each cluster, and in each subplot, it will display the top 50 phrases within that cluster, along with their frequency.
+
+The key steps in this process are:
+
+1. Iterate through the 'results' list, which contains the data for each question.
+2. For each question, count the frequency of each phrase in each cluster using the `Counter` class from the `collections` module.
+3. Create a figure with subplots using `plt.subplots()`.
+4. In each subplot, plot the top 50 phrases for the corresponding cluster using `ax.bar()`.
+5. Add labels, titles, and other formatting to make the visualization more informative.
+
+The resulting visualization will provide a clear overview of the most frequent phrases in each cluster for the given question. You can use this information to further analyze and interpret the content of the keyword clusters.
