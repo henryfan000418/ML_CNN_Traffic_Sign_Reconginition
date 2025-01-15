@@ -6,3 +6,14 @@ Pillow==9.5.0  # Pillow is the modern fork of PIL
 scikit-learn==1.1.3
 tensorflow==2.12.0  # Assuming TensorFlow 2.12.0 for compatibility
 keras==2.6.0
+
+ for i, ax in enumerate(axes):
+        ax.bar(list(cluster_counts[i].keys())[:50], list(cluster_counts[i].values())[:50])
+        ax.set_title(f'Cluster {i}')
+        ax.set_xlabel('Phrase')
+        ax.set_ylabel('Count')
+        ax.tick_params(axis='x', rotation=90)
+
+    fig.suptitle(f'Keyword Clusters for Question: {question}', fontsize=16)
+    plt.tight_layout()
+    plt.show()
