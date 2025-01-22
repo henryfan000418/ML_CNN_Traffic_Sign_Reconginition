@@ -8,80 +8,112 @@ tensorflow==2.12.0  # Assuming TensorFlow 2.12.0 for compatibility
 keras==2.6.0
 
 
-def plot_clusters_for_results(results):
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import PCA
+from collections import Counter
+import random
+
+def plot_two_keyword_columns(results):
     """
-    results: a list of dictionaries, each with:
-        - 'question': str
-        - 'keywords': list of keyword strings
-        - 'cluster_labels': list of integer cluster labels (same length as 'keywords')
-    For each 'result', we:
-        1. Vectorize keywords via TF-IDF.
-        2. Reduce to 2D with PCA.
-        3. Group them by cluster and create one subplot per cluster.
-        4. Plot and annotate the top phrases, avoiding index out-of-bounds errors
-           by zipping each PCA point with its corresponding phrase.
+    For each entry in 'results':
+      1) We'll vectorize & PCA each set of keywords separately.
+      2) Plot them side by side: left subplot = Set1, right subplot = Set2.
+      3) Each subplot color-codes clusters and annotates each point with the keyword text.
     """
-    for result in results:
-        question = result['question']
-        phrases = result['keywords']          # list of strings
-        cluster_labels = result['cluster_labels']  # same length as 'phrases'
+    # Define a color palette for clusters (can expand or choose your own)
+    color_choices = ["blue", "green", "red", "purple", "orange", "brown", "cyan"]
 
-        # 1) Vectorize
-        vectorizer = TfidfVectorizer()
-        X = vectorizer.fit_transform(phrases)
+    for item in results:
+        question        = item["question"]
+        keywords_1      = item["keywords_1"]
+        cluster_lbls_1  = item["cluster_labels_1"]
+        keywords_2      = item["keywords_2"]
+        cluster_lbls_2  = item["cluster_labels_2"]
 
-        # 2) PCA to 2D
-        pca = PCA(n_components=2, random_state=42)
-        X_pca = pca.fit_transform(X.toarray())  # shape = (n_phrases, 2)
+        # --- Prepare figure with 2 subplots (side by side) ---
+        fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12, 6))
+        fig.suptitle(f"Keyword Clusters for Question:\n{question}", fontsize=14)
 
-        # 3) Count phrases in each cluster
-        unique_labels = sorted(set(cluster_labels))
-        cluster_counts = []
-        for c_id in unique_labels:
-            # phrases belonging to cluster c_id
-            cluster_phrases = [p for j, p in enumerate(phrases)
-                               if cluster_labels[j] == c_id]
-            cluster_counts.append(dict(Counter(cluster_phrases)))
+        # ======================
+        #  A) Plot for Set 1
+        # ======================
+        # 1. Vectorize
+        tfidf_1 = TfidfVectorizer()
+        X1 = tfidf_1.fit_transform(keywords_1)
 
-        # 4) Set up subplots: 1 row, num_clusters columns
-        num_clusters = len(unique_labels)
-        fig, axes = plt.subplots(1, num_clusters, figsize=(16, 6))
-        if num_clusters == 1:
-            axes = [axes]  # ensure 'axes' is a list
+        # 2. PCA to 2D
+        pca_1 = PCA(n_components=2, random_state=42)
+        coords_1 = pca_1.fit_transform(X1.toarray())
 
-        # 5) For each cluster, plot top phrases
-        for i, ax in enumerate(axes):
-            c_id = unique_labels[i]
+        # 3. Identify unique clusters
+        unique_clusters_1 = sorted(set(cluster_lbls_1))
 
-            # Get up to 15 "top" phrases in this cluster (arbitrary cutoff)
-            top_phrases = list(cluster_counts[i].keys())[:15]
+        # 4. For each cluster, scatter its points in a chosen color
+        for c_id in unique_clusters_1:
+            # Indices where cluster == c_id
+            idx = [i for i, lbl in enumerate(cluster_lbls_1) if lbl == c_id]
 
-            # Indices for these top phrases in the full list
-            top_indices = [
-                idx for idx, p in enumerate(phrases)
-                if cluster_labels[idx] == c_id and p in top_phrases
-            ]
-            # Coordinates for these top phrases
-            top_points = X_pca[top_indices]
-            # The actual strings to annotate
-            top_phrases_to_plot = [phrases[idx] for idx in top_indices]
+            # Points & phrases
+            pts = coords_1[idx]
+            phs = [keywords_1[i] for i in idx]
 
-            # **Key**: zip the points with the phrases so we don't go out of bounds
-            for (x, y), phrase in zip(top_points, top_phrases_to_plot):
-                x_offset = np.random.uniform(-0.004, 0.004)
-                y_offset = np.random.uniform(-0.002, 0.002)
-                ax.annotate(phrase, (x + x_offset, y + y_offset), fontsize=8)
+            # Choose color (loop if more clusters than color_choices)
+            color = color_choices[c_id % len(color_choices)]
 
-            # Scatter the points themselves
-            ax.scatter(top_points[:, 0], top_points[:, 1], label=f"Cluster {c_id}")
+            # Scatter
+            ax1.scatter(pts[:, 0], pts[:, 1], color=color, alpha=0.7, label=f"Cluster {c_id}")
 
-            # Titles & labels
-            ax.set_title(f"Cluster {c_id}")
-            ax.set_xlabel("PC1")
-            ax.set_ylabel("PC2")
-            ax.legend()
+            # Annotate each point with its phrase
+            for (x, y), phrase in zip(pts, phs):
+                x_off = np.random.uniform(-0.005, 0.005)  # small random offset
+                y_off = np.random.uniform(-0.003, 0.003)
+                ax1.annotate(phrase, (x + x_off, y + y_off), fontsize=8)
 
-        # Overall figure title
-        fig.suptitle(f"Keyword Clusters for Question: {question}", fontsize=16)
+        ax1.set_title("Column 1 Clusters")
+        ax1.set_xlabel("PC1")
+        ax1.set_ylabel("PC2")
+        ax1.legend()
+
+        # ======================
+        #  B) Plot for Set 2
+        # ======================
+        # 1. Vectorize
+        tfidf_2 = TfidfVectorizer()
+        X2 = tfidf_2.fit_transform(keywords_2)
+
+        # 2. PCA to 2D
+        pca_2 = PCA(n_components=2, random_state=42)
+        coords_2 = pca_2.fit_transform(X2.toarray())
+
+        # 3. Identify unique clusters
+        unique_clusters_2 = sorted(set(cluster_lbls_2))
+
+        # 4. For each cluster, scatter its points
+        for c_id in unique_clusters_2:
+            idx = [i for i, lbl in enumerate(cluster_lbls_2) if lbl == c_id]
+
+            pts = coords_2[idx]
+            phs = [keywords_2[i] for i in idx]
+
+            color = color_choices[c_id % len(color_choices)]
+
+            # Scatter
+            ax2.scatter(pts[:, 0], pts[:, 1], color=color, alpha=0.7, label=f"Cluster {c_id}")
+
+            # Annotate
+            for (x, y), phrase in zip(pts, phs):
+                x_off = np.random.uniform(-0.005, 0.005)
+                y_off = np.random.uniform(-0.003, 0.003)
+                ax2.annotate(phrase, (x + x_off, y + y_off), fontsize=8)
+
+        ax2.set_title("Column 2 Clusters")
+        ax2.set_xlabel("PC1")
+        ax2.set_ylabel("PC2")
+        ax2.legend()
+
+        # Final layout
         plt.tight_layout()
         plt.show()
+
