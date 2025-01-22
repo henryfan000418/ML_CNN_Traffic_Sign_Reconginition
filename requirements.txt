@@ -6,3 +6,82 @@ Pillow==9.5.0  # Pillow is the modern fork of PIL
 scikit-learn==1.1.3
 tensorflow==2.12.0  # Assuming TensorFlow 2.12.0 for compatibility
 keras==2.6.0
+
+
+def plot_clusters_for_results(results):
+    """
+    results: a list of dictionaries, each with:
+        - 'question': str
+        - 'keywords': list of keyword strings
+        - 'cluster_labels': list of integer cluster labels (same length as 'keywords')
+    For each 'result', we:
+        1. Vectorize keywords via TF-IDF.
+        2. Reduce to 2D with PCA.
+        3. Group them by cluster and create one subplot per cluster.
+        4. Plot and annotate the top phrases, avoiding index out-of-bounds errors
+           by zipping each PCA point with its corresponding phrase.
+    """
+    for result in results:
+        question = result['question']
+        phrases = result['keywords']          # list of strings
+        cluster_labels = result['cluster_labels']  # same length as 'phrases'
+
+        # 1) Vectorize
+        vectorizer = TfidfVectorizer()
+        X = vectorizer.fit_transform(phrases)
+
+        # 2) PCA to 2D
+        pca = PCA(n_components=2, random_state=42)
+        X_pca = pca.fit_transform(X.toarray())  # shape = (n_phrases, 2)
+
+        # 3) Count phrases in each cluster
+        unique_labels = sorted(set(cluster_labels))
+        cluster_counts = []
+        for c_id in unique_labels:
+            # phrases belonging to cluster c_id
+            cluster_phrases = [p for j, p in enumerate(phrases)
+                               if cluster_labels[j] == c_id]
+            cluster_counts.append(dict(Counter(cluster_phrases)))
+
+        # 4) Set up subplots: 1 row, num_clusters columns
+        num_clusters = len(unique_labels)
+        fig, axes = plt.subplots(1, num_clusters, figsize=(16, 6))
+        if num_clusters == 1:
+            axes = [axes]  # ensure 'axes' is a list
+
+        # 5) For each cluster, plot top phrases
+        for i, ax in enumerate(axes):
+            c_id = unique_labels[i]
+
+            # Get up to 15 "top" phrases in this cluster (arbitrary cutoff)
+            top_phrases = list(cluster_counts[i].keys())[:15]
+
+            # Indices for these top phrases in the full list
+            top_indices = [
+                idx for idx, p in enumerate(phrases)
+                if cluster_labels[idx] == c_id and p in top_phrases
+            ]
+            # Coordinates for these top phrases
+            top_points = X_pca[top_indices]
+            # The actual strings to annotate
+            top_phrases_to_plot = [phrases[idx] for idx in top_indices]
+
+            # **Key**: zip the points with the phrases so we don't go out of bounds
+            for (x, y), phrase in zip(top_points, top_phrases_to_plot):
+                x_offset = np.random.uniform(-0.004, 0.004)
+                y_offset = np.random.uniform(-0.002, 0.002)
+                ax.annotate(phrase, (x + x_offset, y + y_offset), fontsize=8)
+
+            # Scatter the points themselves
+            ax.scatter(top_points[:, 0], top_points[:, 1], label=f"Cluster {c_id}")
+
+            # Titles & labels
+            ax.set_title(f"Cluster {c_id}")
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.legend()
+
+        # Overall figure title
+        fig.suptitle(f"Keyword Clusters for Question: {question}", fontsize=16)
+        plt.tight_layout()
+        plt.show()
